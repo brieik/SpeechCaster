@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -9,17 +10,24 @@ public class GameManager : MonoBehaviour
     [Header("UI References")]
     public TMP_Text scoreText;
     public TMP_Text livesText;
-    public TMP_Text gameOverText;
-    public TMP_Text correctFeedbackText; // NEW
-    public TMP_Text missFeedbackText;    // NEW
-    public GameObject startButton;
+    public TMP_Text correctFeedbackText;
+    public TMP_Text missFeedbackText;
+    public TMP_Text timerText;
 
-    [Header("Gameplay")]
+    [Header("Panels")]
+    public GameObject gameOverPanel;
+    public GameObject winPanel;
+    public GameObject pauseMenuUI;
+
+    [Header("Gameplay Settings")]
     public int lives = 3;
     public int score = 0;
+    public float gameDuration = 120f; // 2 minutes to survive
     public GameObject explosionPrefab;
 
     private bool isGameOver = false;
+    private bool isPaused = false;
+    private float timer;
 
     void Awake()
     {
@@ -31,32 +39,47 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        Time.timeScale = 0f;
-        gameOverText.gameObject.SetActive(false);
-        correctFeedbackText.gameObject.SetActive(false); // NEW
-        missFeedbackText.gameObject.SetActive(false);    // NEW
-        startButton.SetActive(true);
+        // Initialize state
+        isGameOver = false;
+        isPaused = false;
+        score = 0;
+        timer = gameDuration;
+
+        // Hide UI panels
+        if (gameOverPanel != null) gameOverPanel.SetActive(false);
+        if (winPanel != null) winPanel.SetActive(false);
+        if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
+
+        correctFeedbackText.gameObject.SetActive(false);
+        missFeedbackText.gameObject.SetActive(false);
+
         UpdateUI();
+        UpdateTimerUI();
     }
 
-    public void StartGame()
+    void Update()
     {
-        isGameOver = false;
-        score = 0;
-        lives = 3;
-        gameOverText.gameObject.SetActive(false);
-        startButton.SetActive(false);
+        if (isGameOver || isPaused) return;
 
-        // Clear words
-        foreach (var word in Object.FindObjectsByType<WordObject>(FindObjectsSortMode.None))
+        // Countdown timer
+        timer -= Time.deltaTime;
+        if (timer < 0) timer = 0;
+
+        UpdateTimerUI();
+
+        if (timer <= 0)
         {
-            Destroy(word.gameObject);
+            WinGame();
         }
 
-        UpdateUI();
-        Time.timeScale = 1f;
+        // Pause toggle
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            TogglePause();
+        }
     }
 
+    // -------- Gameplay Logic --------
     public void IncreaseScore()
     {
         if (isGameOver) return;
@@ -71,7 +94,7 @@ public class GameManager : MonoBehaviour
 
         lives -= 1;
         UpdateUI();
-        ShowMiss(); // NEW
+        ShowMiss();
 
         if (lives <= 0)
         {
@@ -93,7 +116,7 @@ public class GameManager : MonoBehaviour
             {
                 wordObj.Explode();
                 IncreaseScore();
-                ShowCorrect(); // NEW
+                ShowCorrect();
                 return;
             }
         }
@@ -107,20 +130,28 @@ public class GameManager : MonoBehaviour
         livesText.text = "Lives: " + lives;
     }
 
+    private void UpdateTimerUI()
+    {
+        int minutes = Mathf.FloorToInt(timer / 60f);
+        int seconds = Mathf.FloorToInt(timer % 60f);
+        timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+    }
+
     private void GameOver()
     {
         isGameOver = true;
-        gameOverText.gameObject.SetActive(true);
         Time.timeScale = 0f;
+        if (gameOverPanel != null) gameOverPanel.SetActive(true);
     }
 
-    private IEnumerator ShowStartButtonAfterDelay(float delay)
+    private void WinGame()
     {
-        yield return new WaitForSecondsRealtime(delay);
-        startButton.SetActive(true);
+        isGameOver = true;
+        Time.timeScale = 0f;
+        if (winPanel != null) winPanel.SetActive(true);
     }
 
-    // ---------- NEW Feedback Methods ----------
+    // -------- Feedback --------
     private void ShowCorrect()
     {
         StopAllCoroutines();
@@ -141,5 +172,41 @@ public class GameManager : MonoBehaviour
         yield return new WaitForSeconds(1.2f);
 
         feedbackText.gameObject.SetActive(false);
+    }
+
+    // -------- Pause System --------
+    public void TogglePause()
+    {
+        if (isPaused)
+            ResumeGame();
+        else
+            PauseGame();
+    }
+
+    public void PauseGame()
+    {
+        isPaused = true;
+        Time.timeScale = 0f;
+        if (pauseMenuUI != null) pauseMenuUI.SetActive(true);
+    }
+
+    public void ResumeGame()
+    {
+        isPaused = false;
+        Time.timeScale = 1f;
+        if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
+    }
+
+    // -------- Scene Management --------
+    public void ReturnToMenu()
+    {
+        Time.timeScale = 1f; // make sure time is unpaused
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    public void RetryGame()
+    {
+        Time.timeScale = 1f; // reset time
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }

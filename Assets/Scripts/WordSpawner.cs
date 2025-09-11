@@ -12,6 +12,7 @@ public class WordSpawner : MonoBehaviour
     public float moveSpeed = 2f;
 
     private Vector3 startPos;
+    private int lastWordIndex = -1; // store last word index
 
     void Start()
     {
@@ -28,10 +29,17 @@ public class WordSpawner : MonoBehaviour
 
     void SpawnWord()
     {
-        int index = Random.Range(0, wordList.Length);
-        int pos = Random.Range(0, spawnPoints.Length);
+        // Pick random word but not same as last one
+        int index;
+        do
+        {
+            index = Random.Range(0, wordList.Length);
+        } while (index == lastWordIndex && wordList.Length > 1);
 
-        // Calculate world position of the spawn point
+        lastWordIndex = index;
+
+        // Pick random spawn position
+        int pos = Random.Range(0, spawnPoints.Length);
         Vector3 spawnPosition = spawnPoints[pos].position;
 
         // Instantiate word at that world position (not as a child of spawner)
