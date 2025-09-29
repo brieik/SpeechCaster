@@ -22,37 +22,33 @@ public class GameManager : MonoBehaviour
     [Header("Gameplay Settings")]
     public int lives = 3;
     public int score = 0;
-    public float gameDuration = 120f; // 2 minutes to survive
+    public float gameDuration = 120f;
     public GameObject explosionPrefab;
 
     private bool isGameOver = false;
     private bool isPaused = false;
     private float timer;
 
+    // 🔹 Progress tracking
+    private int correctWords = 0;
+    private int totalWords = 0;
+    private int streak = 0;
+    private int bestStreak = 0;
+
     void Awake()
     {
-        if (Instance == null)
-            Instance = this;
-        else
-            Destroy(gameObject);
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
     }
 
     void Start()
     {
-        // Initialize state
         isGameOver = false;
         isPaused = false;
         score = 0;
         timer = gameDuration;
 
-        // Hide UI panels
-        if (gameOverPanel != null) gameOverPanel.SetActive(false);
-        if (winPanel != null) winPanel.SetActive(false);
-        if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
-
-        correctFeedbackText.gameObject.SetActive(false);
-        missFeedbackText.gameObject.SetActive(false);
-
+        HidePanels();
         UpdateUI();
         UpdateTimerUI();
     }
@@ -61,31 +57,64 @@ public class GameManager : MonoBehaviour
     {
         if (isGameOver || isPaused) return;
 
-        // Countdown timer
         timer -= Time.deltaTime;
         if (timer < 0) timer = 0;
-
         UpdateTimerUI();
 
-        if (timer <= 0)
-        {
-            WinGame();
-        }
+        if (timer <= 0) WinGame();
 
-        // Pause toggle
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            TogglePause();
-        }
+        if (Input.GetKeyDown(KeyCode.Escape)) TogglePause();
     }
 
-    // -------- Gameplay Logic --------
-    public void IncreaseScore()
+    // -------- Gameplay --------
+    public void CheckSpokenWord(string spoken)
     {
         if (isGameOver) return;
 
+        spoken = CleanWord(spoken);
+        totalWords++;
+
+        foreach (var wordObj in UnityEngine.Object.FindObjectsByType<WordObject>(FindObjectsSortMode.None))
+        {
+            string target = CleanWord(wordObj.wordText.text);
+
+            if (spoken == target)
+            {
+                wordObj.Explode();
+                IncreaseScore();
+                correctWords++;
+                streak++;
+                if (streak > bestStreak) bestStreak = streak; // update best streak
+                ShowCorrect();
+                CheckProgress();
+
+                // 🔹 Save progress after correct word
+                ProgressManager.Instance.SaveWordStats(totalWords, correctWords, bestStreak);
+                ProgressManager.Instance.SaveHighScore(score);
+
+                return;
+            }
+        }
+
+        MissWord();
+    }
+
+    private string CleanWord(string w)
+    {
+        return w.ToLower().Trim().TrimEnd('.', ',', '?', '!', ';', ':');
+    }
+
+    public void IncreaseScore()
+    {
+        if (isGameOver) return;
         score += 1;
         UpdateUI();
+
+        // 🔹 Score-based achievements
+        if (score == 1) AchievementManager.Instance.Unlock("First Word");
+        if (score == 10) AchievementManager.Instance.Unlock("10 Words");
+        if (score == 25) AchievementManager.Instance.Unlock("25 Words");
+        if (score == 50) AchievementManager.Instance.Unlock("Word Master");
     }
 
     public void MissWord()
@@ -93,55 +122,70 @@ public class GameManager : MonoBehaviour
         if (isGameOver) return;
 
         lives -= 1;
+        streak = 0; // reset streak
         UpdateUI();
         ShowMiss();
 
-        if (lives <= 0)
-        {
-            GameOver();
-        }
+        // 🔹 Save progress after missed word
+        ProgressManager.Instance.SaveWordStats(totalWords, correctWords, bestStreak);
+        ProgressManager.Instance.SaveHighScore(score);
+
+        if (lives <= 0) GameOver();
     }
 
-    public void CheckSpokenWord(string spoken)
+    // -------- Progress Tracking --------
+    private void CheckProgress()
     {
-        if (isGameOver) return;
+        float accuracy = (totalWords > 0) ? (float)correctWords / totalWords : 0f;
 
-        spoken = spoken.ToLower().Trim().TrimEnd('.', ',', '?', '!', ';', ':');
+        Debug.Log($"Accuracy: {accuracy:P0}, Streak: {streak}");
 
-        foreach (var wordObj in Object.FindObjectsByType<WordObject>(FindObjectsSortMode.None))
-        {
-            string target = wordObj.wordText.text.ToLower().Trim();
+        // 🔹 Streak-based achievements
+        if (streak >= 5) AchievementManager.Instance.Unlock("HotStreak");
+        if (streak >= 10) AchievementManager.Instance.Unlock("Unstoppable");
 
-            if (spoken == target || spoken.Contains(target) || target.Contains(spoken))
-            {
-                wordObj.Explode();
-                IncreaseScore();
-                ShowCorrect();
-                return;
-            }
-        }
+        // 🔹 Accuracy-based achievements
+        if (accuracy >= 0.75f) AchievementManager.Instance.Unlock("SilverPronouncer");
+        if (accuracy >= 0.90f) AchievementManager.Instance.Unlock("GoldenPronouncer");
 
-        ShowMiss(); // If no match, show miss
+        // 🔹 Score-based achievements (already in IncreaseScore)
     }
 
+    // -------- UI / Panels --------
     private void UpdateUI()
     {
-        scoreText.text = "Score: " + score;
-        livesText.text = "Lives: " + lives;
+        scoreText.text = $"Score: {score}";
+        livesText.text = $"Lives: {lives}";
     }
 
     private void UpdateTimerUI()
     {
         int minutes = Mathf.FloorToInt(timer / 60f);
         int seconds = Mathf.FloorToInt(timer % 60f);
-        timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+        timerText.text = $"{minutes:00}:{seconds:00}";
     }
 
+    private void HidePanels()
+    {
+        if (gameOverPanel != null) gameOverPanel.SetActive(false);
+        if (winPanel != null) winPanel.SetActive(false);
+        if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
+        if (correctFeedbackText != null) correctFeedbackText.gameObject.SetActive(false);
+        if (missFeedbackText != null) missFeedbackText.gameObject.SetActive(false);
+    }
+
+    // -------- Game State --------
     private void GameOver()
     {
         isGameOver = true;
         Time.timeScale = 0f;
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
+
+        // 🔹 Save progress on game over
+        ProgressManager.Instance.SaveWordStats(totalWords, correctWords, bestStreak);
+        ProgressManager.Instance.SaveHighScore(score);
+
+        AchievementManager.Instance.Unlock("Game Over");
     }
 
     private void WinGame()
@@ -149,6 +193,12 @@ public class GameManager : MonoBehaviour
         isGameOver = true;
         Time.timeScale = 0f;
         if (winPanel != null) winPanel.SetActive(true);
+
+        // 🔹 Save progress on win
+        ProgressManager.Instance.SaveWordStats(totalWords, correctWords, bestStreak);
+        ProgressManager.Instance.SaveHighScore(score);
+
+        AchievementManager.Instance.Unlock("Survivor");
     }
 
     // -------- Feedback --------
@@ -168,19 +218,15 @@ public class GameManager : MonoBehaviour
     {
         feedbackText.gameObject.SetActive(true);
         feedbackText.alpha = 1f;
-
         yield return new WaitForSeconds(1.2f);
-
         feedbackText.gameObject.SetActive(false);
     }
 
-    // -------- Pause System --------
+    // -------- Pause --------
     public void TogglePause()
     {
-        if (isPaused)
-            ResumeGame();
-        else
-            PauseGame();
+        if (isPaused) ResumeGame();
+        else PauseGame();
     }
 
     public void PauseGame()
@@ -197,16 +243,16 @@ public class GameManager : MonoBehaviour
         if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
     }
 
-    // -------- Scene Management --------
+    // -------- Scene --------
     public void ReturnToMenu()
     {
-        Time.timeScale = 1f; // make sure time is unpaused
+        Time.timeScale = 1f;
         SceneManager.LoadScene("MainMenu");
     }
 
     public void RetryGame()
     {
-        Time.timeScale = 1f; // reset time
+        Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }

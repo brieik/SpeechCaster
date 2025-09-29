@@ -2,6 +2,7 @@ using UnityEngine;
 
 public class SpeechReceiver : MonoBehaviour
 {
+    [Header("References")]
     public GameManager gameManager;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -12,25 +13,29 @@ public class SpeechReceiver : MonoBehaviour
     private static extern void StopRecognition();
 #endif
 
+    /// <summary>
+    /// Called from WebSpeech.jslib when a spoken result is ready.
+    /// </summary>
     public void OnSpeechResult(string spokenWord)
     {
-        Debug.Log("[Receiver] Heard: " + spokenWord);
+        if (string.IsNullOrEmpty(spokenWord)) return;
+
+        Debug.Log($"[SpeechReceiver] Heard: {spokenWord}");
 
         if (gameManager != null)
         {
-            gameManager.CheckSpokenWord(spokenWord.ToLowerInvariant());
+            gameManager.CheckSpokenWord(spokenWord);
         }
         else
         {
-            Debug.LogWarning("[Receiver] GameManager not assigned.");
+            Debug.LogWarning("[SpeechReceiver] GameManager not assigned.");
         }
     }
 
-    // Optional: Called from JS when auto-retry is enabled
     public void RetryRecognition()
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
-        Debug.Log("[Receiver] Retrying recognition...");
+        Debug.Log("[SpeechReceiver] Retrying recognition...");
         StartRecognition();
 #endif
     }
@@ -38,7 +43,7 @@ public class SpeechReceiver : MonoBehaviour
     public void StartMic()
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
-        Debug.Log("[Receiver] StartRecognition called");
+        Debug.Log("[SpeechReceiver] Starting mic...");
         StartRecognition();
 #endif
     }
@@ -46,7 +51,7 @@ public class SpeechReceiver : MonoBehaviour
     public void StopMic()
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
-        Debug.Log("[Receiver] StopRecognition called");
+        Debug.Log("[SpeechReceiver] Stopping mic...");
         StopRecognition();
 #endif
     }
