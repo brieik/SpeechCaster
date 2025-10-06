@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro;
 using System.Collections;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -9,29 +10,32 @@ public class GameManager : MonoBehaviour
 
     [Header("UI References")]
     public TMP_Text scoreText;
-    public TMP_Text livesText;
-    public TMP_Text correctFeedbackText;
-    public TMP_Text missFeedbackText;
-    public TMP_Text timerText;
-
-    [Header("Panels")]
     public GameObject gameOverPanel;
     public GameObject winPanel;
     public GameObject pauseMenuUI;
 
+    [Header("Lives UI")]
+    public Image[] heartIcons; 
+    public Sprite fullHeart;   
+    public Sprite emptyHeart;  
+
+    [Header("Border Feedback UI")]
+    public Image greenBorder;  // ✅ Assign green overlay image
+    public Image redBorder;    // ✅ Assign red overlay image
+    public float flashDuration = 0.3f; // ✅ Flash timing
+    public float maxAlpha = 0.35f;     // ✅ Max glow strength
+
     [Header("Gameplay Settings")]
     public int lives = 3;
     public int score = 0;
-    public float gameDuration = 120f;
+    public int maxWords = 25;
     public GameObject explosionPrefab;
 
-    private bool isGameOver = false;
+    public static bool isGameOver = false;
     private bool isPaused = false;
-    private float timer;
 
-    // 🔹 Progress tracking
     private int correctWords = 0;
-    private int totalWords = 0;
+    public static int totalWords = 0;
     private int streak = 0;
     private int bestStreak = 0;
 
@@ -46,33 +50,33 @@ public class GameManager : MonoBehaviour
         isGameOver = false;
         isPaused = false;
         score = 0;
-        timer = gameDuration;
+        totalWords = 0;
 
         HidePanels();
         UpdateUI();
-        UpdateTimerUI();
     }
 
     void Update()
     {
         if (isGameOver || isPaused) return;
-
-        timer -= Time.deltaTime;
-        if (timer < 0) timer = 0;
-        UpdateTimerUI();
-
-        if (timer <= 0) WinGame();
-
         if (Input.GetKeyDown(KeyCode.Escape)) TogglePause();
     }
 
     // -------- Gameplay --------
+    public void OnWordSpawned()
+    {
+        totalWords++;
+        Debug.Log($"Word {totalWords}/{maxWords} spawned.");
+
+        if (totalWords >= maxWords)
+            WinGame();
+    }
+
     public void CheckSpokenWord(string spoken)
     {
         if (isGameOver) return;
 
         spoken = CleanWord(spoken);
-        totalWords++;
 
         foreach (var wordObj in UnityEngine.Object.FindObjectsByType<WordObject>(FindObjectsSortMode.None))
         {
@@ -84,11 +88,10 @@ public class GameManager : MonoBehaviour
                 IncreaseScore();
                 correctWords++;
                 streak++;
-                if (streak > bestStreak) bestStreak = streak; // update best streak
-                ShowCorrect();
+                if (streak > bestStreak) bestStreak = streak;
+                StartCoroutine(FlashBorder(greenBorder)); // ✅ Correct feedback
                 CheckProgress();
 
-                // 🔹 Save progress after correct word
                 ProgressManager.Instance.SaveWordStats(totalWords, correctWords, bestStreak);
                 ProgressManager.Instance.SaveHighScore(score);
 
@@ -107,10 +110,9 @@ public class GameManager : MonoBehaviour
     public void IncreaseScore()
     {
         if (isGameOver) return;
-        score += 1;
+        score++;
         UpdateUI();
 
-        // 🔹 Score-based achievements
         if (score == 1) AchievementManager.Instance.Unlock("First Word");
         if (score == 10) AchievementManager.Instance.Unlock("10 Words");
         if (score == 25) AchievementManager.Instance.Unlock("25 Words");
@@ -121,48 +123,45 @@ public class GameManager : MonoBehaviour
     {
         if (isGameOver) return;
 
-        lives -= 1;
-        streak = 0; // reset streak
+        lives--;
+        streak = 0;
         UpdateUI();
-        ShowMiss();
+        StartCoroutine(FlashBorder(redBorder)); // ✅ Miss feedback
 
-        // 🔹 Save progress after missed word
         ProgressManager.Instance.SaveWordStats(totalWords, correctWords, bestStreak);
         ProgressManager.Instance.SaveHighScore(score);
 
-        if (lives <= 0) GameOver();
+        if (lives <= 0)
+            GameOver();
     }
 
-    // -------- Progress Tracking --------
     private void CheckProgress()
     {
         float accuracy = (totalWords > 0) ? (float)correctWords / totalWords : 0f;
-
         Debug.Log($"Accuracy: {accuracy:P0}, Streak: {streak}");
 
-        // 🔹 Streak-based achievements
         if (streak >= 5) AchievementManager.Instance.Unlock("HotStreak");
         if (streak >= 10) AchievementManager.Instance.Unlock("Unstoppable");
-
-        // 🔹 Accuracy-based achievements
         if (accuracy >= 0.75f) AchievementManager.Instance.Unlock("SilverPronouncer");
         if (accuracy >= 0.90f) AchievementManager.Instance.Unlock("GoldenPronouncer");
-
-        // 🔹 Score-based achievements (already in IncreaseScore)
     }
 
-    // -------- UI / Panels --------
+    // -------- UI --------
     private void UpdateUI()
     {
         scoreText.text = $"Score: {score}";
-        livesText.text = $"Lives: {lives}";
+        UpdateHearts();
     }
 
-    private void UpdateTimerUI()
+    private void UpdateHearts()
     {
-        int minutes = Mathf.FloorToInt(timer / 60f);
-        int seconds = Mathf.FloorToInt(timer % 60f);
-        timerText.text = $"{minutes:00}:{seconds:00}";
+        for (int i = 0; i < heartIcons.Length; i++)
+        {
+            if (i < lives)
+                heartIcons[i].sprite = fullHeart;
+            else
+                heartIcons[i].sprite = emptyHeart;
+        }
     }
 
     private void HidePanels()
@@ -170,8 +169,39 @@ public class GameManager : MonoBehaviour
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
         if (winPanel != null) winPanel.SetActive(false);
         if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
-        if (correctFeedbackText != null) correctFeedbackText.gameObject.SetActive(false);
-        if (missFeedbackText != null) missFeedbackText.gameObject.SetActive(false);
+
+        if (greenBorder != null) greenBorder.gameObject.SetActive(false);
+        if (redBorder != null) redBorder.gameObject.SetActive(false);
+    }
+
+    // -------- Flash Feedback --------
+    private IEnumerator FlashBorder(Image border)
+    {
+        if (border == null) yield break;
+
+        border.gameObject.SetActive(true);
+        Color c = border.color;
+
+        // Fade In
+        for (float t = 0; t < flashDuration; t += Time.deltaTime)
+        {
+            c.a = Mathf.Lerp(0, maxAlpha, t / flashDuration);
+            border.color = c;
+            yield return null;
+        }
+
+        // Hold briefly
+        yield return new WaitForSeconds(0.1f);
+
+        // Fade Out
+        for (float t = 0; t < flashDuration; t += Time.deltaTime)
+        {
+            c.a = Mathf.Lerp(maxAlpha, 0, t / flashDuration);
+            border.color = c;
+            yield return null;
+        }
+
+        border.gameObject.SetActive(false);
     }
 
     // -------- Game State --------
@@ -181,7 +211,6 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 0f;
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
 
-        // 🔹 Save progress on game over
         ProgressManager.Instance.SaveWordStats(totalWords, correctWords, bestStreak);
         ProgressManager.Instance.SaveHighScore(score);
 
@@ -190,36 +219,16 @@ public class GameManager : MonoBehaviour
 
     private void WinGame()
     {
+        if (isGameOver) return;
+
         isGameOver = true;
         Time.timeScale = 0f;
         if (winPanel != null) winPanel.SetActive(true);
 
-        // 🔹 Save progress on win
         ProgressManager.Instance.SaveWordStats(totalWords, correctWords, bestStreak);
         ProgressManager.Instance.SaveHighScore(score);
 
         AchievementManager.Instance.Unlock("Survivor");
-    }
-
-    // -------- Feedback --------
-    private void ShowCorrect()
-    {
-        StopAllCoroutines();
-        StartCoroutine(ShowFeedback(correctFeedbackText));
-    }
-
-    private void ShowMiss()
-    {
-        StopAllCoroutines();
-        StartCoroutine(ShowFeedback(missFeedbackText));
-    }
-
-    private IEnumerator ShowFeedback(TMP_Text feedbackText)
-    {
-        feedbackText.gameObject.SetActive(true);
-        feedbackText.alpha = 1f;
-        yield return new WaitForSeconds(1.2f);
-        feedbackText.gameObject.SetActive(false);
     }
 
     // -------- Pause --------

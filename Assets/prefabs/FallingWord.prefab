@@ -51,7 +51,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   wordText: {fileID: 2897047036696305156}
   targetWord: 
-  speed: 20
+  speed: 35
 --- !u!1 &5936953398551640301
 GameObject:
   m_ObjectHideFlags: 0

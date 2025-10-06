@@ -5,18 +5,18 @@ public class WordSpawner : MonoBehaviour
 {
     [Header("Word Settings")]
     public GameObject wordPrefab;
-    public Transform[] spawnPoints;         
+    public Transform[] spawnPoints;
     public string[] wordList;
     public float spawnInterval = 3f;
 
     [Header("Spawner Movement")]
-    public float moveRangeX = 3f;       // max X distance from start
-    public float moveRangeY = 1f;       // small Y variation
-    public float moveSpeed = 2f;        // speed of movement
+    public float moveRangeX = 3f;
+    public float moveRangeY = 1f;
+    public float moveSpeed = 2f;
 
     [Header("Pause Settings")]
     [Range(0f, 1f)]
-    public float pauseChance = 0.3f;    // 30% chance to pause at each target
+    public float pauseChance = 0.3f;
     public float minPauseDuration = 0.5f;
     public float maxPauseDuration = 1.5f;
 
@@ -32,8 +32,7 @@ public class WordSpawner : MonoBehaviour
         startPos = transform.position;
         targetPos = startPos;
 
-        // Set difficulty word list
-        switch(GameSettings.selectedDifficulty)
+        switch (GameSettings.selectedDifficulty)
         {
             case 0: spawnInterval = 6f; wordList = WordLists.easyWords; break;
             case 1: spawnInterval = 6f; wordList = WordLists.mediumWords; break;
@@ -41,9 +40,8 @@ public class WordSpawner : MonoBehaviour
         }
 
         ShuffleWords();
-        InvokeRepeating("SpawnWord", 1f, spawnInterval);
-
-        PickNewTarget(); // start first movement
+        InvokeRepeating(nameof(SpawnWord), 1f, spawnInterval);
+        PickNewTarget();
     }
 
     void Update()
@@ -61,7 +59,6 @@ public class WordSpawner : MonoBehaviour
 
     System.Collections.IEnumerator PauseAndPickNext()
     {
-        // Only pause based on chance
         if (Random.value < pauseChance)
         {
             float pauseTime = Random.Range(minPauseDuration, maxPauseDuration);
@@ -85,16 +82,17 @@ public class WordSpawner : MonoBehaviour
         for (int i = shuffledWords.Count - 1; i > 0; i--)
         {
             int j = Random.Range(0, i + 1);
-            string temp = shuffledWords[i];
-            shuffledWords[i] = shuffledWords[j];
-            shuffledWords[j] = temp;
+            (shuffledWords[i], shuffledWords[j]) = (shuffledWords[j], shuffledWords[i]);
         }
         currentIndex = 0;
     }
 
     void SpawnWord()
     {
-        if (currentIndex >= shuffledWords.Count) ShuffleWords();
+        if (GameManager.isGameOver) return; // ✅ Now accessible
+
+        if (currentIndex >= shuffledWords.Count)
+            ShuffleWords();
 
         string chosenWord = shuffledWords[currentIndex++];
         int pos = Random.Range(0, spawnPoints.Length);
@@ -102,5 +100,10 @@ public class WordSpawner : MonoBehaviour
 
         GameObject word = Instantiate(wordPrefab, spawnPosition, Quaternion.identity, transform.parent);
         word.GetComponent<WordObject>().targetWord = chosenWord;
+
+        GameManager.Instance.OnWordSpawned(); // ✅ Increment count safely
+
+        if (GameManager.totalWords >= GameManager.Instance.maxWords)
+            CancelInvoke(nameof(SpawnWord));
     }
 }
