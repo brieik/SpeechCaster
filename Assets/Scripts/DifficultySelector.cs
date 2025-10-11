@@ -12,4 +12,10 @@ public class DifficultySelector : MonoBehaviour
         GameSettings.selectedDifficulty = difficulty;
         SceneManager.LoadScene("MainGame"); // Change to your main game scene name
     }
+
+    // 👇 Add this function
+    public void GoBackToMainMenu()
+    {
+        SceneManager.LoadScene("MainMenu"); // Change to your actual main menu scene name
+    }
 }
