@@ -5048,7 +5048,7 @@ MonoBehaviour:
   - {fileID: 1672628267}
   - {fileID: 703224709}
   fullHeart: {fileID: 21300000, guid: f52293332a5734f40b5b435b46cf9ab4, type: 3}
-  emptyHeart: {fileID: 21300000, guid: 6054e8eb32673a84fb6ba8ed5ec47723, type: 3}
+  emptyHeart: {fileID: 21300000, guid: d6dad66af2ce9ff43955e52dff5d2c19, type: 3}
   greenBorder: {fileID: 296246042}
   redBorder: {fileID: 1027327977}
   flashDuration: 0.3
