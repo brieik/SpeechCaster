@@ -34,6 +34,10 @@ public class GameManager : MonoBehaviour
     public int maxWords = 25;
     public GameObject explosionPrefab;
 
+    [Header("Scoring Settings")]
+    public float streakMultiplier = 0.1f; // 10% extra per streak
+    public float maxConfidenceScore = 10f; // max points per word
+
     private bool isPaused = false;
     public static bool isGameOver = false;
 
@@ -80,13 +84,11 @@ public class GameManager : MonoBehaviour
         UpdateUI();
     }
 
-    // Called from WordSpawner when a new word is spawned
     public void OnWordSpawned()
     {
         wordsSpawned++;
     }
 
-    // Called when a word is exploded correctly
     public void OnWordExploded(float confidence)
     {
         wordsResolved++;
@@ -100,30 +102,31 @@ public class GameManager : MonoBehaviour
         if (streak >= 10) AchievementManager.Instance.Unlock("HotStreak");
         if (streak >= 20) AchievementManager.Instance.Unlock("Unstoppable");
 
-        int addedScore = Mathf.Max(1, Mathf.RoundToInt(confidence * 10f));
+        // Scoring with multiplier
+        float multiplier = 1f + (streak * streakMultiplier);
+        int addedScore = Mathf.RoundToInt(Mathf.Clamp(confidence * maxConfidenceScore * multiplier, 1f, maxConfidenceScore * 5f));
         AddScore(addedScore);
 
-         // Feedback
-    if (confidence >= 0.9f)
-    {
-        StartCoroutine(FlashBorder(greenBorder));
-        ShowFeedback("Excellent!", Color.green);
-    }
-    else if (confidence >= 0.84f)
-    {
-        StartCoroutine(FlashBorder(yellowBorder));
-        ShowFeedback("Good! Slightly unclear.", new Color(1f, 0.85f, 0f));
-    }
-    else
-    {
-        StartCoroutine(FlashBorder(redBorder));
-        ShowFeedback("Almost! Try again.", Color.red);
+        // Feedback
+        if (confidence >= 0.9f)
+        {
+            StartCoroutine(FlashBorder(greenBorder));
+            ShowFeedback("Excellent!", Color.green);
+        }
+        else if (confidence >= 0.84f)
+        {
+            StartCoroutine(FlashBorder(yellowBorder));
+            ShowFeedback("Good! Slightly unclear.", new Color(1f, 0.85f, 0f));
+        }
+        else
+        {
+            StartCoroutine(FlashBorder(redBorder));
+            ShowFeedback("Almost! Try again.", Color.red);
+        }
+
+        CheckEndOfRound();
     }
 
-    CheckEndOfRound();
-    }
-
-    // Called when a word falls past the bottom
     public void WordFallen()
     {
         if (isGameOver) return;
@@ -131,6 +134,7 @@ public class GameManager : MonoBehaviour
         lives--;
         wordsResolved++;
         streak = 0;
+        wordConfidences.Add(0f); // Missed word penalizes clarity
 
         StartCoroutine(FlashBorder(redBorder));
         ShowFeedback("Word missed!", Color.red);
@@ -146,7 +150,6 @@ public class GameManager : MonoBehaviour
         CheckEndOfRound();
     }
 
-    // Called when player speaks a word
     public void CheckSpokenWord(string spoken, float confidence = 1f)
     {
         if (isGameOver) return;
@@ -158,13 +161,14 @@ public class GameManager : MonoBehaviour
             if (spoken == target)
             {
                 wordObj.Explode();
-            
                 return;
             }
         }
 
-        // Mispronounced word → just reset streak and show feedback
+        // Mispronounced word
         streak = 0;
+        wordsResolved++;            // Count it as resolved
+        wordConfidences.Add(0f);    // Clarity = 0
         StartCoroutine(FlashBorder(redBorder));
         ShowFeedback("Missed! Keep trying!", Color.red);
     }
@@ -179,65 +183,61 @@ public class GameManager : MonoBehaviour
 
     private void CheckEndOfRound()
     {
-        // End round only after all spawned words are resolved
         if (wordsSpawned >= maxWords && wordsResolved >= maxWords)
             EndRound();
     }
 
     private void EndRound()
-{
-    if (isGameOver) return;
-
-    isGameOver = true;
-    Time.timeScale = 0f;
-
-    int difficulty = GameSettings.selectedDifficulty;
-
-    // Save stats
-    SaveStats(difficulty);
-
-    float accuracy = (wordsResolved > 0) ? (float)correctWords / wordsResolved : 0f;
-    float avgClarity = CalculateAverageClarity();
-
-    if (accuracy >= 0.75f) AchievementManager.Instance.Unlock("SilverPronouncer");
-    if (accuracy >= 0.90f) AchievementManager.Instance.Unlock("GoldenPronouncer");
-
-    string feedbackMessage = GetFeedbackMessage(accuracy, avgClarity);
-
-    // New win condition: if player still has lives left
-    bool isWin = lives > 0;
-
-    if (isWin)
     {
-        winPanel?.SetActive(true);
-        TMP_Text panelText = winPanel.GetComponentInChildren<TMP_Text>();
-        if (panelText != null)
-        {
-            int savedHighScore = ProgressManager.Instance.LoadHighScore(difficulty);
+        if (isGameOver) return;
 
-            panelText.text = $"🏆 You Win!\n\n" +
-                            $"Final Score: {score} (High Score: {savedHighScore})\n" +
-                            $"Best Streak: {bestStreak}\n" +
-                            $"Accuracy: {accuracy * 100f:F1}%\n" +
-                            $"Average Clarity: {avgClarity * 100f:F1}%\n\n" +
-                            $"{feedbackMessage}";
+        isGameOver = true;
+        Time.timeScale = 0f;
+
+        int difficulty = GameSettings.selectedDifficulty;
+
+        SaveStats(difficulty);
+
+        float accuracy = (wordsResolved > 0) ? (float)correctWords / wordsResolved : 0f;
+        float avgClarity = CalculateAverageClarity();
+
+        if (accuracy >= 0.75f) AchievementManager.Instance.Unlock("SilverPronouncer");
+        if (accuracy >= 0.90f) AchievementManager.Instance.Unlock("GoldenPronouncer");
+
+        string feedbackMessage = GetFeedbackMessage(accuracy, avgClarity);
+
+        bool isWin = lives > 0; // Win if at least 1 life remains
+
+        if (isWin)
+        {
+            winPanel?.SetActive(true);
+            TMP_Text panelText = winPanel.GetComponentInChildren<TMP_Text>();
+            if (panelText != null)
+            {
+                int savedHighScore = ProgressManager.Instance.LoadHighScore(difficulty);
+
+                panelText.text = $"🏆 You Win!\n\n" +
+                                  $"Final Score: {score} (High Score: {savedHighScore})\n" +
+                                  $"Best Streak: {bestStreak}\n" +
+                                  $"Accuracy: {accuracy * 100f:F1}%\n" +
+                                  $"Average Clarity: {avgClarity * 100f:F1}%\n\n" +
+                                  $"{feedbackMessage}";
+            }
+        }
+        else
+        {
+            gameOverPanel?.SetActive(true);
+            TMP_Text panelText = gameOverPanel.GetComponentInChildren<TMP_Text>();
+            if (panelText != null)
+            {
+                panelText.text = $"💀 Game Over\n\n" +
+                                  $"Final Score: {score}\n" +
+                                  $"Accuracy: {accuracy * 100f:F1}%\n" +
+                                  $"Average Clarity: {avgClarity * 100f:F1}%\n\n" +
+                                  $"{feedbackMessage}";
+            }
         }
     }
-    else
-    {
-        gameOverPanel?.SetActive(true);
-        TMP_Text panelText = gameOverPanel.GetComponentInChildren<TMP_Text>();
-        if (panelText != null)
-        {
-            panelText.text = $"💀 Game Over\n\n" +
-                            $"Final Score: {score}\n" +
-                            $"Accuracy: {accuracy * 100f:F1}%\n" +
-                            $"Average Clarity: {avgClarity * 100f:F1}%\n\n" +
-                            $"{feedbackMessage}";
-        }
-    }
-}
-
 
     private float CalculateAverageClarity()
     {
@@ -260,11 +260,8 @@ public class GameManager : MonoBehaviour
     private void UpdateUI()
     {
         scoreText.text = $"Score: {score}";
-
         for (int i = 0; i < heartIcons.Length; i++)
-        {
             heartIcons[i].sprite = (i < lives) ? fullHeart : emptyHeart;
-        }
     }
 
     private void HidePanels()
@@ -364,7 +361,6 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    // ------------------ SAVE STATS ------------------
     private void SaveStats(int difficulty)
     {
         if (string.IsNullOrEmpty(UserManager.Instance.CurrentUser)) return;
