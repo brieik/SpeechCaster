@@ -32,6 +32,7 @@ public class WordSpawner : MonoBehaviour
         startPos = transform.position;
         targetPos = startPos;
 
+        // Choose word list & spawn interval based on difficulty
         switch (GameSettings.selectedDifficulty)
         {
             case 0: spawnInterval = 6f; wordList = WordLists.easyWords; break;
@@ -89,7 +90,13 @@ public class WordSpawner : MonoBehaviour
 
     void SpawnWord()
     {
-        if (GameManager.isGameOver) return; // ✅ Now accessible
+        // ✅ Stop spawning if game over or max words reached
+       if (GameManager.isGameOver || GameManager.Instance.WordsSpawned >= GameManager.Instance.maxWords)
+
+        {
+            CancelInvoke(nameof(SpawnWord));
+            return;
+        }
 
         if (currentIndex >= shuffledWords.Count)
             ShuffleWords();
@@ -99,11 +106,10 @@ public class WordSpawner : MonoBehaviour
         Vector3 spawnPosition = spawnPoints[pos].position;
 
         GameObject word = Instantiate(wordPrefab, spawnPosition, Quaternion.identity, transform.parent);
-        word.GetComponent<WordObject>().targetWord = chosenWord;
+        WordObject wordObj = word.GetComponent<WordObject>();
+        wordObj.targetWord = chosenWord;
 
-        GameManager.Instance.OnWordSpawned(); // ✅ Increment count safely
-
-        if (GameManager.totalWords >= GameManager.Instance.maxWords)
-            CancelInvoke(nameof(SpawnWord));
+        // ✅ Notify GameManager that a word has spawned
+        GameManager.Instance.OnWordSpawned();
     }
 }

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 public class AchievementManager : MonoBehaviour
 {
     public static AchievementManager Instance;
-
     private HashSet<string> unlocked = new HashSet<string>();
 
     void Awake()
@@ -22,9 +21,7 @@ public class AchievementManager : MonoBehaviour
         LoadAchievements();
     }
 
-    /// <summary>
-    /// Unlocks an achievement for the current user and selected difficulty
-    /// </summary>
+    // ---------------- Unlock achievement for current difficulty ----------------
     public void Unlock(string achievementID)
     {
         if (string.IsNullOrEmpty(UserManager.Instance.CurrentUser)) return;
@@ -36,27 +33,22 @@ public class AchievementManager : MonoBehaviour
         {
             PlayerPrefs.SetInt(key, 1);
             PlayerPrefs.Save();
-            unlocked.Add(key);
-            Debug.Log($"Unlocked achievement: {key}");
+            unlocked.Add(achievementID);
+            Debug.Log($"Unlocked achievement ({difficultyPrefix}): {achievementID}");
         }
     }
 
-    /// <summary>
-    /// Checks if an achievement is unlocked for the current user and selected difficulty
-    /// </summary>
+    // ---------------- Check if unlocked for current difficulty ----------------
     public bool IsUnlocked(string achievementID)
     {
         if (string.IsNullOrEmpty(UserManager.Instance.CurrentUser)) return false;
 
         string difficultyPrefix = GetDifficultyPrefix();
         string key = UserManager.Instance.CurrentUser + "_Achv_" + difficultyPrefix + "_" + achievementID;
-
         return PlayerPrefs.GetInt(key, 0) == 1;
     }
 
-    /// <summary>
-    /// Determines the prefix based on currently selected difficulty
-    /// </summary>
+    // ---------------- Difficulty prefix ----------------
     private string GetDifficultyPrefix()
     {
         switch (GameSettings.selectedDifficulty)
@@ -68,9 +60,7 @@ public class AchievementManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Loads all achievements for the current user and selected difficulty into memory
-    /// </summary>
+    // ---------------- Load unlocked achievements for current difficulty ----------------
     private void LoadAchievements()
     {
         unlocked.Clear();

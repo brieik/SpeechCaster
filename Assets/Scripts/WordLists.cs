@@ -11,7 +11,7 @@ public static string[] easyWords = {
 
     public static string[] mediumWords = {
     "planet", "school", "teacher", "window", "garden", "market",
-    "forest", "pencil", "rocket", "river", "butterfly", "schoolbag",
+    "forest", "pencil", "rocket", "river", "butterfly", "school bag",
     "chocolate", "family", "elephant", "picture", "teacher", "kitchen",
     "monster", "summer"
 };

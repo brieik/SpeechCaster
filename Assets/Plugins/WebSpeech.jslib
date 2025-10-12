@@ -6,11 +6,11 @@ mergeInto(LibraryManager.library, {
     }
 
     navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(function (stream) {
+      .then(stream => {
         console.log("[WebSpeech] Microphone permission granted.");
         stream.getTracks().forEach(track => track.stop());
       })
-      .catch(function (err) {
+      .catch(err => {
         console.warn("[WebSpeech] Microphone permission denied:", err);
       });
   },
@@ -26,20 +26,15 @@ mergeInto(LibraryManager.library, {
       return;
     }
 
-    // ✅ COMBINED GRAMMAR LIST — all your words from WordLists.cs
     const allWords = [
-      // Easy words
       "cat","sun","hat","dog","book","pen","fish","milk","tree","ball","cup","run","star","bird","rain","apple","leaf","moon","door",
-      // Medium words
-      "planet","school","teacher","window","garden","market","forest","pencil","rocket","river","butterfly","schoolbag",
+      "planet","school","teacher","window","garden","market","forest","pencil","rocket","river","butterfly","school bag",
       "chocolate","family","elephant","picture","kitchen","monster","summer",
-      // Hard words
       "stranger","through","rhythm","architecture","consequence","temperature","extraordinary",
       "phenomenon","squirrel","environment","hypothesis","psychology","mathematics","vegetable",
       "university","literature","accommodation","transformation"
     ];
 
-    // Create grammar string
     const grammar = "#JSGF V1.0; grammar words; public <word> = " + allWords.join(" | ") + " ;";
 
     const recognition = new SpeechRecognition();
@@ -48,7 +43,6 @@ mergeInto(LibraryManager.library, {
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
-    // 🔹 Attach the grammar
     if (SpeechGrammarList) {
       const speechRecognitionList = new SpeechGrammarList();
       speechRecognitionList.addFromString(grammar, 1);
@@ -57,13 +51,18 @@ mergeInto(LibraryManager.library, {
     }
 
     window.recognitionStarting = true;
-    window.allowAutoRestart = false;
+    window.allowAutoRestart = true;
+    window.recognitionManuallyStopped = false;
 
     recognition.onresult = function (event) {
-      const transcript = event.results[0][0].transcript.trim().toLowerCase();
-      console.log("[WebSpeech] Recognized:", transcript);
+      const result = event.results[0][0];
+      const transcript = result.transcript.trim().toLowerCase();
+      const confidence = result.confidence || 0;
+
+      console.log(`[WebSpeech] Recognized: "${transcript}" (confidence: ${confidence.toFixed(2)})`);
+
       if (transcript.length > 0) {
-        SendMessage('SpeechReceiver', 'OnSpeechResult', transcript);
+        SendMessage('SpeechReceiver', 'OnSpeechResultWithConfidence', transcript + "|" + confidence);
       }
     };
 
@@ -72,8 +71,18 @@ mergeInto(LibraryManager.library, {
       window.recognitionActive = false;
       window.recognitionStarting = false;
 
+      // 🩵 Handle "aborted" or "no-speech" gracefully
+      if (event.error === "aborted" || event.error === "no-speech" || event.error === "network") {
+        console.log("[WebSpeech] Speech aborted or no input detected. Sending Try Again to Unity...");
+        SendMessage('SpeechReceiver', 'OnSpeechTryAgain'); // 👈 Unity message
+      }
+
+      // Auto-restart for recoverable errors
       if (!window.recognitionManuallyStopped && window.allowAutoRestart) {
-        setTimeout(() => SendMessage('SpeechReceiver', 'RetryRecognition'), 1000);
+        setTimeout(() => {
+          console.log("[WebSpeech] Auto-restarting after error...");
+          SendMessage('SpeechReceiver', 'RetryRecognition');
+        }, 1500);
       }
     };
 
@@ -83,7 +92,10 @@ mergeInto(LibraryManager.library, {
       window.recognitionStarting = false;
 
       if (!window.recognitionManuallyStopped && window.allowAutoRestart) {
-        setTimeout(() => SendMessage('SpeechReceiver', 'RetryRecognition'), 1000);
+        setTimeout(() => {
+          console.log("[WebSpeech] Auto-restarting after end...");
+          SendMessage('SpeechReceiver', 'RetryRecognition');
+        }, 1500);
       }
     };
 
@@ -91,7 +103,6 @@ mergeInto(LibraryManager.library, {
       recognition.start();
       window.recognition = recognition;
       window.recognitionActive = true;
-      window.recognitionManuallyStopped = false;
       console.log("[WebSpeech] Started recognition.");
     } catch (e) {
       console.error("[WebSpeech] Start failed:", e);

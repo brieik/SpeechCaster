@@ -19,9 +19,6 @@ public class MainMenu : MonoBehaviour
 
     private void Start()
     {
-
-
-    
         RefreshUserDropdown();
 
         List<string> users = UserManager.Instance.GetAllUsers();
@@ -51,11 +48,10 @@ public class MainMenu : MonoBehaviour
         }
     }
 
-     public void PlayGame()
+    public void PlayGame()
     {
-    SceneManager.LoadScene("SelectDifficulty"); // instead of "MainGame"
-    }   
-
+        SceneManager.LoadScene("SelectDifficulty"); // or your main game scene
+    }
 
     public void QuitGame()
     {
@@ -80,10 +76,8 @@ public class MainMenu : MonoBehaviour
         if (UserManager.Instance.CreateUser(newUser))
         {
             RefreshUserDropdown();
-
             PlayerPrefs.SetString(LastUserKey, newUser);
             PlayerPrefs.Save();
-
             UpdateGreetings();
 
             userPanel.SetActive(false);
@@ -104,7 +98,6 @@ public class MainMenu : MonoBehaviour
         {
             PlayerPrefs.SetString(LastUserKey, selected);
             PlayerPrefs.Save();
-
             UpdateGreetings();
 
             userPanel.SetActive(false);
@@ -117,21 +110,16 @@ public class MainMenu : MonoBehaviour
         if (userDropdown.options.Count == 0) return;
 
         string selected = userDropdown.options[userDropdown.value].text;
+        UserManager.Instance.DeleteUser(selected);
 
-        if (UserManager.Instance.DeleteUser(selected))
+        RefreshUserDropdown();
+        UpdateGreetings();
+
+        List<string> users = UserManager.Instance.GetAllUsers();
+        if (users.Count == 0)
         {
-            Debug.Log("Deleted user: " + selected);
-
-            RefreshUserDropdown();
-            UpdateGreetings();
-
-            List<string> users = UserManager.Instance.GetAllUsers();
-            if (users.Count == 0)
-            {
-                // No users left → show user panel to create new
-                mainMenuPanel.SetActive(false);
-                userPanel.SetActive(true);
-            }
+            mainMenuPanel.SetActive(false);
+            userPanel.SetActive(true);
         }
     }
 
@@ -149,14 +137,12 @@ public class MainMenu : MonoBehaviour
         userDropdown.ClearOptions();
         userDropdown.AddOptions(users);
 
-        // Optional: highlight last user in dropdown
         string lastUser = PlayerPrefs.GetString(LastUserKey, "");
         int index = users.IndexOf(lastUser);
         if (index >= 0)
             userDropdown.value = index;
     }
 
-    // Updates greeting in both main menu and user panel
     private void UpdateGreetings()
     {
         string current = UserManager.Instance.CurrentUser;
@@ -164,7 +150,6 @@ public class MainMenu : MonoBehaviour
 
         if (greetingText != null)
             greetingText.text = text;
-
         if (userPanelGreetingText != null)
             userPanelGreetingText.text = text;
     }

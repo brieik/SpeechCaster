@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using System.Collections;
 using System.Collections.Generic;
 
 [System.Serializable]
@@ -14,23 +15,26 @@ public class AchievementData
 public class AchievementPanelController : MonoBehaviour
 {
     [Header("UI References")]
-    public GameObject achievementPanel;       // Panel to show/hide
-    public Transform contentParent;           // ScrollView Content
-    public GameObject achievementEntryPrefab; // Prefab for each achievement
-    public TMP_Dropdown difficultyDropdown;   // Dropdown for Easy/Medium/Hard
-    public TMP_Text difficultyLabel;          // Label showing current difficulty
+    public GameObject achievementPanel;
+    public Transform contentParent;
+    public GameObject achievementEntryPrefab;
+    public TMP_Dropdown difficultyDropdown;
+    public TMP_Text difficultyLabel;
 
     [Header("Player Stats Texts")]
     public TMP_Text bestStreakText;
     public TMP_Text highScoreText;
 
-    [Header("Achievement Info (optional)")]
-    public AchievementData[] achievementInfos; // Optional descriptions/icons
+    [Header("Achievement Info")]
+    public AchievementData[] achievementInfos;
+
+    // Singleton for easy access
+    public static AchievementPanelController Instance;
 
     void Awake()
     {
-        // Persist root GameObject
-        DontDestroyOnLoad(transform.root.gameObject);
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
     }
 
     void Start()
@@ -41,8 +45,12 @@ public class AchievementPanelController : MonoBehaviour
             difficultyDropdown.AddOptions(new List<string> { "Easy", "Medium", "Hard" });
             difficultyDropdown.onValueChanged.AddListener(OnDifficultyChanged);
 
-            // Set default
+            // Set dropdown value first
             difficultyDropdown.value = GameSettings.selectedDifficulty;
+
+            // Populate stats & achievements to match dropdown
+            PopulateStats(difficultyDropdown.value);
+            PopulateAchievements(difficultyDropdown.value);
         }
     }
 
@@ -54,25 +62,24 @@ public class AchievementPanelController : MonoBehaviour
         if (isActive)
         {
             achievementPanel.transform.SetAsLastSibling();
-            PopulateStats();
-            PopulateAchievements();
+            PopulateStats(difficultyDropdown.value);
+            PopulateAchievements(difficultyDropdown.value);
         }
     }
 
     void OnDifficultyChanged(int value)
     {
-        GameSettings.selectedDifficulty = value; // update global difficulty
-        PopulateStats();                         // refresh stats for new difficulty
-        PopulateAchievements();                  // refresh achievements for new difficulty
+        GameSettings.selectedDifficulty = value;
+        PopulateStats(value);
+        PopulateAchievements(value);
     }
 
-    void PopulateStats()
+    void PopulateStats(int difficulty)
     {
         if (string.IsNullOrEmpty(UserManager.Instance.CurrentUser)) return;
 
-        // Load stats for current difficulty
-        var stats = ProgressManager.Instance.LoadWordStats();
-        int highScore = ProgressManager.Instance.LoadHighScore();
+        var stats = ProgressManager.Instance.LoadWordStats(difficulty);
+        int highScore = ProgressManager.Instance.LoadHighScore(difficulty);
 
         if (bestStreakText != null)
             bestStreakText.text = $"Best Streak: {stats.bestStreak}";
@@ -81,32 +88,32 @@ public class AchievementPanelController : MonoBehaviour
             highScoreText.text = $"High Score: {highScore}";
     }
 
-    void PopulateAchievements()
+    void PopulateAchievements(int difficulty)
     {
-        // Clear old entries
         foreach (Transform child in contentParent)
             Destroy(child.gameObject);
-
-        string difficultyPrefix = GetDifficultyPrefix();
 
         foreach (var achID in UserManager.Instance.allAchievements)
         {
             GameObject entry = Instantiate(achievementEntryPrefab, contentParent);
             entry.transform.localScale = Vector3.one;
 
-            // Name
             TMP_Text nameText = entry.transform.Find("NameText")?.GetComponent<TMP_Text>();
             if (nameText != null) nameText.text = achID;
 
-            // Status
             TMP_Text statusText = entry.transform.Find("StatusText")?.GetComponent<TMP_Text>();
             if (statusText != null)
             {
-                bool unlocked = AchievementManager.Instance.IsUnlocked($"{difficultyPrefix}_{achID}");
+                bool unlocked = AchievementManager.Instance.IsUnlocked(achID);
                 statusText.text = unlocked ? "Unlocked" : "Locked";
+
+                if (unlocked && !statusText.gameObject.GetComponent<AchievementFlashFlag>())
+                {
+                    FlashAchievement(entry);
+                    statusText.gameObject.AddComponent<AchievementFlashFlag>();
+                }
             }
 
-            // Description
             TMP_Text descText = entry.transform.Find("DescriptionText")?.GetComponent<TMP_Text>();
             if (descText != null)
             {
@@ -114,7 +121,6 @@ public class AchievementPanelController : MonoBehaviour
                 descText.text = info != null ? info.description : "";
             }
 
-            // Icon
             Image iconImg = entry.transform.Find("Icon")?.GetComponent<Image>();
             if (iconImg != null)
             {
@@ -124,7 +130,7 @@ public class AchievementPanelController : MonoBehaviour
             }
         }
 
-        UpdateDifficultyLabel(difficultyPrefix);
+        UpdateDifficultyLabel(difficulty);
     }
 
     AchievementData GetAchievementInfo(string id)
@@ -135,21 +141,68 @@ public class AchievementPanelController : MonoBehaviour
         return null;
     }
 
-    private string GetDifficultyPrefix()
+    private void UpdateDifficultyLabel(int difficulty)
     {
-        int val = difficultyDropdown != null ? difficultyDropdown.value : GameSettings.selectedDifficulty;
-        switch (val)
+        if (difficultyLabel != null)
         {
-            case 0: return "Easy";
-            case 1: return "Medium";
-            case 2: return "Hard";
-            default: return "Unknown";
+            string prefix = difficulty switch
+            {
+                0 => "Easy",
+                1 => "Medium",
+                2 => "Hard",
+                _ => "Unknown"
+            };
+            difficultyLabel.text = $"Difficulty: {prefix}";
         }
     }
 
-    private void UpdateDifficultyLabel(string prefix)
+    // ================== FLASH + BOUNCE EFFECT ==================
+    public void FlashAchievement(GameObject entry)
     {
-        if (difficultyLabel != null)
-            difficultyLabel.text = $"Difficulty: {prefix}";
+        StartCoroutine(FlashBounceCoroutine(entry));
+    }
+
+    private IEnumerator FlashBounceCoroutine(GameObject entry)
+    {
+        if (entry == null) yield break;
+
+        Image bg = entry.GetComponent<Image>();
+        if (bg == null) yield break;
+
+        Vector3 originalScale = entry.transform.localScale;
+        Vector3 targetScale = originalScale * 1.2f;
+        Color originalColor = bg.color;
+        Color flashColor = Color.yellow;
+
+        float duration = 0.3f;
+
+        float t = 0f;
+        while (t < duration)
+        {
+            if (entry == null || bg == null) yield break;
+            entry.transform.localScale = Vector3.Lerp(originalScale, targetScale, t / duration);
+            bg.color = Color.Lerp(originalColor, flashColor, t / duration);
+            t += Time.deltaTime;
+            yield return null;
+        }
+
+        t = 0f;
+        while (t < duration)
+        {
+            if (entry == null || bg == null) yield break;
+            entry.transform.localScale = Vector3.Lerp(targetScale, originalScale, t / duration);
+            bg.color = Color.Lerp(flashColor, originalColor, t / duration);
+            t += Time.deltaTime;
+            yield return null;
+        }
+
+        if (entry != null && bg != null)
+        {
+            entry.transform.localScale = originalScale;
+            bg.color = originalColor;
+        }
     }
 }
+
+// Helper component to prevent repeated flashing
+public class AchievementFlashFlag : MonoBehaviour { }
