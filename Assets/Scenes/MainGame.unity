@@ -1533,6 +1533,8 @@ MonoBehaviour:
   pauseChance: 0.24
   minPauseDuration: 0.1
   maxPauseDuration: 0.5
+  witchAnimator: {fileID: 1955536073}
+  spawnDelayAfterAnimation: 0.3
 --- !u!1 &296246041
 GameObject:
   m_ObjectHideFlags: 0
@@ -2320,7 +2322,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 2.7872925, y: 5.6572266}
+  m_AnchoredPosition: {x: 2.7873535, y: 5.6572266}
   m_SizeDelta: {x: 50.9109, y: 31.829}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &744670958
@@ -5285,6 +5287,8 @@ MonoBehaviour:
   score: 0
   maxWords: 25
   explosionPrefab: {fileID: 3956992750742380891, guid: fc6eefff21d5d824d840897b82905969, type: 3}
+  streakMultiplier: 0.1
+  maxConfidenceScore: 10
 --- !u!1 &1955536072 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6257589419641407483, guid: b4c2ae2201a0cac45b11853fa8244ff4, type: 3}

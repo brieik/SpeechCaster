@@ -20,6 +20,10 @@ public class WordSpawner : MonoBehaviour
     public float minPauseDuration = 0.5f;
     public float maxPauseDuration = 1.5f;
 
+    [Header("Animation Settings")]
+    public Animator witchAnimator; 
+    public float spawnDelayAfterAnimation = 0.3f; 
+
     private Vector3 startPos;
     private Vector3 targetPos;
     private bool isMoving = false;
@@ -91,13 +95,26 @@ public class WordSpawner : MonoBehaviour
     void SpawnWord()
     {
         // ✅ Stop spawning if game over or max words reached
-       if (GameManager.isGameOver || GameManager.Instance.WordsSpawned >= GameManager.Instance.maxWords)
-
+        if (GameManager.isGameOver || GameManager.Instance.WordsSpawned >= GameManager.Instance.maxWords)
         {
             CancelInvoke(nameof(SpawnWord));
             return;
         }
 
+        StartCoroutine(SpawnWordWithAnimation()); // 🆕 Use coroutine for timing
+    }
+
+    // 🆕 Coroutine version with animation trigger
+    private System.Collections.IEnumerator SpawnWordWithAnimation()
+    {
+        // Trigger the witch's "Cast" animation
+        if (witchAnimator != null)
+            witchAnimator.SetTrigger("Cast");
+
+        // Wait briefly to sync with animation
+        yield return new WaitForSeconds(spawnDelayAfterAnimation);
+
+        // Continue spawning logic
         if (currentIndex >= shuffledWords.Count)
             ShuffleWords();
 
@@ -111,5 +128,8 @@ public class WordSpawner : MonoBehaviour
 
         // ✅ Notify GameManager that a word has spawned
         GameManager.Instance.OnWordSpawned();
+
+        yield return new WaitForSeconds(0.2f);
+        witchAnimator.Play("Idle");
     }
 }
