@@ -20,6 +20,7 @@ public class GameManager : MonoBehaviour
     public Image[] heartIcons;
     public Sprite fullHeart;
     public Sprite emptyHeart;
+    
 
     [Header("Border Feedback UI")]
     public Image greenBorder;
