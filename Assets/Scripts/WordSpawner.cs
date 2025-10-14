@@ -128,8 +128,5 @@ public class WordSpawner : MonoBehaviour
 
         // ✅ Notify GameManager that a word has spawned
         GameManager.Instance.OnWordSpawned();
-
-        yield return new WaitForSeconds(0.2f);
-        witchAnimator.Play("Idle");
     }
 }

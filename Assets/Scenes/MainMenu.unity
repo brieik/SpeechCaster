@@ -3085,16 +3085,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d33c12010098c3149a974902bc9168cd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  audioSource: {fileID: 491635237}
-  masterSlider: {fileID: 663778358}
-  musicSlider: {fileID: 1844438541}
-  sfxSlider: {fileID: 782272450}
-  muteToggle: {fileID: 601065634}
+  musicSource: {fileID: 0}
+  sfxSource: {fileID: 0}
+  bgSource: {fileID: 0}
+  masterSlider: {fileID: 0}
+  musicSlider: {fileID: 0}
+  sfxSlider: {fileID: 0}
+  muteToggle: {fileID: 0}
   sceneMusicList:
   - sceneName: MainMenu
     musicClip: {fileID: 8300000, guid: 26d99642071904840a4ae721798cb050, type: 3}
   - sceneName: SelectDifficulty
     musicClip: {fileID: 8300000, guid: 26d99642071904840a4ae721798cb050, type: 3}
+  explosionSound: {fileID: 8300000, guid: d15f05d4bd871994bb41fd737ae40bc5, type: 3}
+  witchLaughSound: {fileID: 8300000, guid: 914d50d6ab3a7564aa538479db55cbde, type: 3}
+  windBackground: {fileID: 8300000, guid: 1ca2d9d68f5bf9c4597c5c0fb938ad0a, type: 3}
 --- !u!82 &491635237
 AudioSource:
   m_ObjectHideFlags: 0
@@ -3690,19 +3695,7 @@ MonoBehaviour:
   m_Group: {fileID: 0}
   onValueChanged:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 491635236}
-        m_TargetAssemblyTypeName: AudioManager, Assembly-CSharp
-        m_MethodName: ToggleMute
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
   m_IsOn: 1
 --- !u!1 &617019203
 GameObject:
@@ -4214,7 +4207,7 @@ GameObject:
   - component: {fileID: 663778357}
   - component: {fileID: 663778358}
   m_Layer: 5
-  m_Name: MasterVolumeSlider
+  m_Name: MasterSlider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4293,19 +4286,7 @@ MonoBehaviour:
   m_Value: 0.24
   m_OnValueChanged:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 491635236}
-        m_TargetAssemblyTypeName: AudioManager, Assembly-CSharp
-        m_MethodName: SetMasterVolume
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!224 &665052179 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 122922013013063042, guid: 98634fe936ee7114cbc531d95f24b0d3, type: 3}
@@ -5011,7 +4992,7 @@ GameObject:
   - component: {fileID: 782272449}
   - component: {fileID: 782272450}
   m_Layer: 5
-  m_Name: 'SFXVolumeSlider '
+  m_Name: SFXSlider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5090,19 +5071,7 @@ MonoBehaviour:
   m_Value: 0.89
   m_OnValueChanged:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 491635236}
-        m_TargetAssemblyTypeName: AudioManager, Assembly-CSharp
-        m_MethodName: SetSFXVolume
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!1 &783624996
 GameObject:
   m_ObjectHideFlags: 0
@@ -5206,7 +5175,6 @@ GameObject:
   - component: {fileID: 794007803}
   - component: {fileID: 794007802}
   - component: {fileID: 794007804}
-  - component: {fileID: 794007805}
   m_Layer: 0
   m_Name: UIManager
   m_TagString: Untagged
@@ -5236,13 +5204,13 @@ MonoBehaviour:
   achievementInfos:
   - id: FirstWord
     description: Score your first word
-    icon: {fileID: 21300000, guid: 19565ed9663162c45a139f01ef2448ad, type: 3}
+    icon: {fileID: 21300000, guid: 559f08bb7b3e3484ab652e5ecdf6d5ba, type: 3}
   - id: HotStreak
     description: Get 10 words correct in a row
     icon: {fileID: 21300000, guid: 40d3dd2d4e2dfd246b102aed0e7f04ad, type: 3}
   - id: Unstoppable
     description: Get 20 words correct in a row
-    icon: {fileID: 21300000, guid: 1f1ebe5b50a96ce49b511d2c0a92e0c1, type: 3}
+    icon: {fileID: 21300000, guid: 9c044dbb2f0768e4a84a94d2cef5cad7, type: 3}
   - id: SilverPronouncer
     description: "Accuracy \u2265 75%"
     icon: {fileID: 21300000, guid: 5739796f066c0134aa99a8a4583ecfc1, type: 3}
@@ -5278,19 +5246,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   soundSettingsPanel: {fileID: 930832767}
---- !u!114 &794007805
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 794007801}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 73622226bd057d64aac25b2993d1ed38, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  tutorialPanel: {fileID: 0}
 --- !u!1 &799704258
 GameObject:
   m_ObjectHideFlags: 0
@@ -5697,7 +5652,7 @@ GameObject:
   - component: {fileID: 856926144}
   - component: {fileID: 856926143}
   m_Layer: 5
-  m_Name: MasterVolume (1)
+  m_Name: SoundSettingsText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6043,6 +5998,7 @@ GameObject:
   - component: {fileID: 930832768}
   - component: {fileID: 930832770}
   - component: {fileID: 930832769}
+  - component: {fileID: 930832771}
   m_Layer: 5
   m_Name: SoundSettingsPanel
   m_TagString: Untagged
@@ -6113,6 +6069,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 930832767}
   m_CullTransparentMesh: 1
+--- !u!114 &930832771
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930832767}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 947e261d8632ce046af78c951fb27726, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &948313494
 GameObject:
   m_ObjectHideFlags: 0
@@ -10828,7 +10796,7 @@ GameObject:
   - component: {fileID: 1844438540}
   - component: {fileID: 1844438541}
   m_Layer: 5
-  m_Name: 'MusicVolumeSlider '
+  m_Name: MusicSlider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -10907,19 +10875,7 @@ MonoBehaviour:
   m_Value: 0.24
   m_OnValueChanged:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 491635236}
-        m_TargetAssemblyTypeName: AudioManager, Assembly-CSharp
-        m_MethodName: SetMusicVolume
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!224 &1866508966 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 122922013013063042, guid: 98634fe936ee7114cbc531d95f24b0d3, type: 3}

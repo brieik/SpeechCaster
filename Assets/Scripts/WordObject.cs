@@ -36,9 +36,9 @@ public class WordObject : MonoBehaviour
 
     public void Explode(float confidence = 1f)
     {
-        // 💥 Play explosion sound
-        if (SFXManager.Instance != null)
-            SFXManager.Instance.PlayExplosion();
+         //  Play explosion sound using AudioManager
+    if (AudioManager.Instance != null)
+        AudioManager.Instance.PlayExplosion();
 
         // Spawn explosion effect
         if (GameManager.Instance.explosionPrefab != null)
