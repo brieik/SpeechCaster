@@ -36,7 +36,7 @@ public class WordSpawner : MonoBehaviour
         startPos = transform.position;
         targetPos = startPos;
 
-        // Choose word list & spawn interval based on difficulty
+        // Set word list & spawn interval based on difficulty
         switch (GameSettings.selectedDifficulty)
         {
             case 0: spawnInterval = 6f; wordList = WordLists.easyWords; break;
@@ -47,6 +47,13 @@ public class WordSpawner : MonoBehaviour
         ShuffleWords();
         InvokeRepeating(nameof(SpawnWord), 1f, spawnInterval);
         PickNewTarget();
+
+        // 🟢 Start WebGL speech recognition automatically
+   #if !UNITY_EDITOR && UNITY_WEBGL
+SpeechReceiver receiver = Object.FindFirstObjectByType<SpeechReceiver>();
+if (receiver != null)
+    receiver.StartMicForCurrentLevel(GameSettings.selectedDifficulty);
+#endif
     }
 
     void Update()
@@ -94,27 +101,22 @@ public class WordSpawner : MonoBehaviour
 
     void SpawnWord()
     {
-        // ✅ Stop spawning if game over or max words reached
         if (GameManager.isGameOver || GameManager.Instance.WordsSpawned >= GameManager.Instance.maxWords)
         {
             CancelInvoke(nameof(SpawnWord));
             return;
         }
 
-        StartCoroutine(SpawnWordWithAnimation()); // 🆕 Use coroutine for timing
+        StartCoroutine(SpawnWordWithAnimation());
     }
 
-    // 🆕 Coroutine version with animation trigger
     private System.Collections.IEnumerator SpawnWordWithAnimation()
     {
-        // Trigger the witch's "Cast" animation
         if (witchAnimator != null)
             witchAnimator.SetTrigger("Cast");
 
-        // Wait briefly to sync with animation
         yield return new WaitForSeconds(spawnDelayAfterAnimation);
 
-        // Continue spawning logic
         if (currentIndex >= shuffledWords.Count)
             ShuffleWords();
 
@@ -126,7 +128,6 @@ public class WordSpawner : MonoBehaviour
         WordObject wordObj = word.GetComponent<WordObject>();
         wordObj.targetWord = chosenWord;
 
-        // ✅ Notify GameManager that a word has spawned
         GameManager.Instance.OnWordSpawned();
     }
 }

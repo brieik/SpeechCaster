@@ -3097,9 +3097,11 @@ MonoBehaviour:
     musicClip: {fileID: 8300000, guid: 26d99642071904840a4ae721798cb050, type: 3}
   - sceneName: SelectDifficulty
     musicClip: {fileID: 8300000, guid: 26d99642071904840a4ae721798cb050, type: 3}
+  - sceneName: MainGame
+    musicClip: {fileID: 8300000, guid: 1ca2d9d68f5bf9c4597c5c0fb938ad0a, type: 3}
   explosionSound: {fileID: 8300000, guid: d15f05d4bd871994bb41fd737ae40bc5, type: 3}
   witchLaughSound: {fileID: 8300000, guid: 914d50d6ab3a7564aa538479db55cbde, type: 3}
-  windBackground: {fileID: 8300000, guid: 1ca2d9d68f5bf9c4597c5c0fb938ad0a, type: 3}
+  windBackground: {fileID: 0}
 --- !u!82 &491635237
 AudioSource:
   m_ObjectHideFlags: 0

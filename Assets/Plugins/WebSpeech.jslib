@@ -1,4 +1,39 @@
 mergeInto(LibraryManager.library, {
+  wordList: [], // current level words
+
+  SetWordDifficulty: function(levelPtr) {
+    var level = UTF8ToString(levelPtr);
+
+    // Clear previous list
+    Module.wordList = [];
+
+    if(level === "easy") {
+      Module.wordList = [
+        "fan","food","fish","fairy","very","vote","van","vest",
+        "this","that","then","bath","path","thin","three","zip",
+        "zoo","buzz","prize","rice","sun","moon","king","queen","dragon"
+      ];
+    } else if(level === "medium") {
+      Module.wordList = [
+        "fantasy","festival","fortress","fearful","forever","victory",
+        "villain","voyage","vanish","velvet","thunder","thousand",
+        "brother","mother","gather","another","puzzle","blizzard",
+        "frozen","horizon","amazing","discover","adventure","wizard","lantern"
+      ];
+    } else if(level === "hard") {
+      Module.wordList = [
+        "responsibility","pronunciation","opportunity","vocabulary",
+        "unbelievable","transformation","determination","extraordinary",
+        "electricity","imagination","communication","information",
+        "celebration","investigation","civilization","federation",
+        "verification","visualization","adventurous","victorious",
+        "perseverance","bewilderment","appreciation","exaggeration","manifestation"
+      ];
+    }
+
+    console.log("[WebSpeech] Word difficulty set to:", level, "with", Module.wordList.length, "words");
+  },
+
   RequestMicPermission: function () {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.warn("[WebSpeech] getUserMedia not supported.");
@@ -26,29 +61,7 @@ mergeInto(LibraryManager.library, {
       return;
     }
 
-    // 🎯 Combined all level words (Easy, Medium, Hard)
-    const allWords = [
-      // Level 1 – Magical Beginnings (Easy)
-      "fan", "food", "fish", "fairy", "very", "vote", "van", "vest",
-      "this", "that", "then", "bath", "path", "thin", "three", "zip",
-      "zoo", "buzz", "prize", "rice", "sun", "moon", "king", "queen", "dragon",
-
-      // Level 2 – The Dark Forest (Medium)
-      "fantasy", "festival", "fortress", "fearful", "forever", "victory",
-      "villain", "voyage", "vanish", "velvet", "thunder", "thousand",
-      "brother", "mother", "gather", "another", "puzzle", "blizzard",
-      "frozen", "horizon", "amazing", "discover", "adventure", "wizard", "lantern",
-
-      // Level 3 – The Forbidden Tower (Hard)
-      "responsibility", "pronunciation", "opportunity", "vocabulary",
-      "unbelievable", "transformation", "determination", "extraordinary",
-      "electricity", "imagination", "communication", "information",
-      "celebration", "investigation", "civilization", "federation",
-      "verification", "visualization", "adventurous", "victorious",
-      "perseverance", "bewilderment", "appreciation", "exaggeration", "manifestation"
-    ];
-
-    const grammar = "#JSGF V1.0; grammar words; public <word> = " + allWords.join(" | ") + " ;";
+    const grammar = "#JSGF V1.0; grammar words; public <word> = " + Module.wordList.join(" | ") + " ;";
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
@@ -60,7 +73,7 @@ mergeInto(LibraryManager.library, {
       const speechRecognitionList = new SpeechGrammarList();
       speechRecognitionList.addFromString(grammar, 1);
       recognition.grammars = speechRecognitionList;
-      console.log("[WebSpeech] Grammar loaded with " + allWords.length + " words.");
+      console.log("[WebSpeech] Grammar loaded with " + Module.wordList.length + " words.");
     }
 
     window.recognitionStarting = true;

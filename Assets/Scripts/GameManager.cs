@@ -151,27 +151,29 @@ public class GameManager : MonoBehaviour
     }
 
     public void CheckSpokenWord(string spoken, float confidence = 1f)
+{
+    if (isGameOver) return;
+    spoken = CleanWord(spoken);
+
+    foreach (var wordObj in UnityEngine.Object.FindObjectsByType<WordObject>(FindObjectsSortMode.None))
     {
-        if (isGameOver) return;
-        spoken = CleanWord(spoken);
-
-        foreach (var wordObj in UnityEngine.Object.FindObjectsByType<WordObject>(FindObjectsSortMode.None))
+        string target = CleanWord(wordObj.wordText.text);
+        if (spoken == target)
         {
-            string target = CleanWord(wordObj.wordText.text);
-            if (spoken == target)
-            {
-                wordObj.Explode();
-                return;
-            }
+            // Pass actual confidence
+            wordObj.Explode(confidence); // <- make Explode() accept confidence
+            return;
         }
-
-        // Mispronounced word
-        streak = 0;
-        wordsResolved++;            // Count it as resolved
-        wordConfidences.Add(0f);    // Clarity = 0
-        StartCoroutine(FlashBorder(redBorder));
-        ShowFeedback("Missed! Keep trying!", Color.red);
     }
+
+    // Mispronounced word
+    streak = 0;
+    wordsResolved++;            
+    wordConfidences.Add(0f);    
+    StartCoroutine(FlashBorder(redBorder));
+    ShowFeedback("Missed! Keep trying!", Color.red);
+}
+
 
     private string CleanWord(string w) => w.ToLower().Trim().TrimEnd('.', ',', '?', '!', ';', ':');
 
