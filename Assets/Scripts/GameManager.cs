@@ -216,7 +216,7 @@ public class GameManager : MonoBehaviour
             {
                 int savedHighScore = ProgressManager.Instance.LoadHighScore(difficulty);
 
-                panelText.text = $"🏆 You Win!\n\n" +
+                panelText.text = $"  You Win!\n\n" +
                                   $"Final Score: {score} (High Score: {savedHighScore})\n" +
                                   $"Best Streak: {bestStreak}\n" +
                                   $"Accuracy: {accuracy * 100f:F1}%\n" +
@@ -230,7 +230,7 @@ public class GameManager : MonoBehaviour
             TMP_Text panelText = gameOverPanel.GetComponentInChildren<TMP_Text>();
             if (panelText != null)
             {
-                panelText.text = $"💀 Game Over\n\n" +
+                panelText.text = $"  Game Over\n\n" +
                                   $"Final Score: {score}\n" +
                                   $"Accuracy: {accuracy * 100f:F1}%\n" +
                                   $"Average Clarity: {avgClarity * 100f:F1}%\n\n" +

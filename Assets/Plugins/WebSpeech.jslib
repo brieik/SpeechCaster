@@ -26,13 +26,26 @@ mergeInto(LibraryManager.library, {
       return;
     }
 
+    // 🎯 Combined all level words (Easy, Medium, Hard)
     const allWords = [
-      "cat","sun","hat","dog","book","pen","fish","milk","tree","ball","cup","run","star","bird","rain","apple","leaf","moon","door",
-      "planet","school","teacher","window","garden","market","forest","pencil","rocket","river","butterfly","school bag",
-      "chocolate","family","elephant","picture","kitchen","monster","summer",
-      "stranger","through","rhythm","architecture","consequence","temperature","extraordinary",
-      "phenomenon","squirrel","environment","hypothesis","psychology","mathematics","vegetable",
-      "university","literature","accommodation","transformation"
+      // Level 1 – Magical Beginnings (Easy)
+      "fan", "food", "fish", "fairy", "very", "vote", "van", "vest",
+      "this", "that", "then", "bath", "path", "thin", "three", "zip",
+      "zoo", "buzz", "prize", "rice", "sun", "moon", "king", "queen", "dragon",
+
+      // Level 2 – The Dark Forest (Medium)
+      "fantasy", "festival", "fortress", "fearful", "forever", "victory",
+      "villain", "voyage", "vanish", "velvet", "thunder", "thousand",
+      "brother", "mother", "gather", "another", "puzzle", "blizzard",
+      "frozen", "horizon", "amazing", "discover", "adventure", "wizard", "lantern",
+
+      // Level 3 – The Forbidden Tower (Hard)
+      "responsibility", "pronunciation", "opportunity", "vocabulary",
+      "unbelievable", "transformation", "determination", "extraordinary",
+      "electricity", "imagination", "communication", "information",
+      "celebration", "investigation", "civilization", "federation",
+      "verification", "visualization", "adventurous", "victorious",
+      "perseverance", "bewilderment", "appreciation", "exaggeration", "manifestation"
     ];
 
     const grammar = "#JSGF V1.0; grammar words; public <word> = " + allWords.join(" | ") + " ;";
@@ -71,13 +84,11 @@ mergeInto(LibraryManager.library, {
       window.recognitionActive = false;
       window.recognitionStarting = false;
 
-      // 🩵 Handle "aborted" or "no-speech" gracefully
       if (event.error === "aborted" || event.error === "no-speech" || event.error === "network") {
         console.log("[WebSpeech] Speech aborted or no input detected. Sending Try Again to Unity...");
-        SendMessage('SpeechReceiver', 'OnSpeechTryAgain'); // 👈 Unity message
+        SendMessage('SpeechReceiver', 'OnSpeechTryAgain');
       }
 
-      // Auto-restart for recoverable errors
       if (!window.recognitionManuallyStopped && window.allowAutoRestart) {
         setTimeout(() => {
           console.log("[WebSpeech] Auto-restarting after error...");
