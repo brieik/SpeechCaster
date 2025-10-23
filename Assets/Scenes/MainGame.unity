@@ -1543,7 +1543,7 @@ MonoBehaviour:
   - {fileID: 212452377}
   wordList: []
   spawnInterval: 4
-  moveRangeX: 405
+  moveRangeX: 370
   moveRangeY: 30
   moveSpeed: 100
   pauseChance: 0.24
@@ -5301,7 +5301,7 @@ MonoBehaviour:
   maxAlpha: 0.35
   lives: 3
   score: 0
-  maxWords: 25
+  maxWords: 15
   explosionPrefab: {fileID: 3956992750742380891, guid: fc6eefff21d5d824d840897b82905969, type: 3}
   streakMultiplier: 0.1
   maxConfidenceScore: 10
