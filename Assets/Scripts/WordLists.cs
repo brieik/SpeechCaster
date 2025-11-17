@@ -5,9 +5,9 @@ public static class WordLists
     // Level 1 – Magical Beginnings (Easy)
     // 1–2 syllables, common, familiar sounds but already introducing Filipino problem phonemes in simple form.
     public static string[] easyWords = {
-        "fan", "food", "fish", "fairy", "very", "vote", "van", "vest",
-        "this", "that", "then", "bath", "path", "thin", "three", "zip",
-        "zoo", "buzz", "prize", "rice", "sun", "moon", "king", "queen", "dragon"
+        "fan", "food", "fish", "fairy", "very", "vote", "van", 
+        "this", "that", "then", "thin", "three", "zip",
+        "zoo", "buzz", "rice", "sun", "moon", "king", "queen", "dragon"
     };
 
     // Level 2 – The Dark Forest (Medium)

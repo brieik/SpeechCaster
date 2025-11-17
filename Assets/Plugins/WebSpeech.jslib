@@ -1,26 +1,24 @@
 mergeInto(LibraryManager.library, {
-  wordList: [], // current level words
+  wordList: [],
 
   SetWordDifficulty: function(levelPtr) {
     var level = UTF8ToString(levelPtr);
-
-    // Clear previous list
     Module.wordList = [];
 
-    if(level === "easy") {
+    if (level === "easy") {
       Module.wordList = [
-        "fan","food","fish","fairy","very","vote","van","vest",
-        "this","that","then","bath","path","thin","three","zip",
-        "zoo","buzz","prize","rice","sun","moon","king","queen","dragon"
+        "fan","food","fish","fairy","very","vote","van",
+        "this","that","then","thin","three","zip",
+        "zoo","buzz","rice","sun","moon","king","queen","dragon"
       ];
-    } else if(level === "medium") {
+    } else if (level === "medium") {
       Module.wordList = [
         "fantasy","festival","fortress","fearful","forever","victory",
         "villain","voyage","vanish","velvet","thunder","thousand",
         "brother","mother","gather","another","puzzle","blizzard",
         "frozen","horizon","amazing","discover","adventure","wizard","lantern"
       ];
-    } else if(level === "hard") {
+    } else if (level === "hard") {
       Module.wordList = [
         "responsibility","pronunciation","opportunity","vocabulary",
         "unbelievable","transformation","determination","extraordinary",
@@ -31,7 +29,7 @@ mergeInto(LibraryManager.library, {
       ];
     }
 
-    console.log("[WebSpeech] Word difficulty set to:", level, "with", Module.wordList.length, "words");
+    console.log("[WebSpeech] Word difficulty set:", level, "(", Module.wordList.length, "words )");
   },
 
   RequestMicPermission: function () {
@@ -51,7 +49,10 @@ mergeInto(LibraryManager.library, {
   },
 
   StartRecognition: function () {
-    if (window.recognitionActive || window.recognitionStarting) return;
+    if (window.recognitionActive || window.recognitionStarting) {
+      console.log("[WebSpeech] StartRecognition ignored: already active/starting.");
+      return;
+    }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
@@ -61,44 +62,48 @@ mergeInto(LibraryManager.library, {
       return;
     }
 
-    const grammar = "#JSGF V1.0; grammar words; public <word> = " + Module.wordList.join(" | ") + " ;";
-
+    const grammar = "#JSGF V1.0; grammar words; public <word> = " + (Module.wordList.join(" | ") || "") + " ;";
     const recognition = new SpeechRecognition();
+
     recognition.lang = 'en-US';
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
-    if (SpeechGrammarList) {
-      const speechRecognitionList = new SpeechGrammarList();
-      speechRecognitionList.addFromString(grammar, 1);
-      recognition.grammars = speechRecognitionList;
-      console.log("[WebSpeech] Grammar loaded with " + Module.wordList.length + " words.");
+    if (SpeechGrammarList && Module.wordList.length > 0) {
+      const list = new SpeechGrammarList();
+      list.addFromString(grammar, 1);
+      recognition.grammars = list;
     }
 
+    // Flags for push-to-talk
     window.recognitionStarting = true;
-    window.allowAutoRestart = true;
-    window.recognitionManuallyStopped = false;
+    window.recognitionActive = false;
+    window.recognitionManuallyStopped = false; // user pressed button
+    window.allowAutoRestart = false;           // disable auto-restart by default
 
     recognition.onresult = function (event) {
-      const result = event.results[0][0];
-      const transcript = result.transcript.trim().toLowerCase();
-      const confidence = result.confidence || 0;
-
-      console.log(`[WebSpeech] Recognized: "${transcript}" (confidence: ${confidence.toFixed(2)})`);
-
-      if (transcript.length > 0) {
-        SendMessage('SpeechReceiver', 'OnSpeechResultWithConfidence', transcript + "|" + confidence);
+      try {
+        const r = event.results[0][0];
+        const transcript = (r.transcript || "").trim().toLowerCase();
+        const confidence = r.confidence || 0;
+        console.log(`[WebSpeech] Recognized: "${transcript}" (confidence: ${confidence.toFixed(2)})`);
+        if (transcript.length > 0) {
+          SendMessage('SpeechReceiver', 'OnSpeechResultWithConfidence', transcript + "|" + confidence);
+        }
+      } catch (e) {
+        console.warn("[WebSpeech] onresult handler error:", e);
       }
     };
 
     recognition.onerror = function (event) {
-      console.warn("[WebSpeech] Error:", event.error);
+      console.warn("[WebSpeech] Error:", event && event.error);
       window.recognitionActive = false;
       window.recognitionStarting = false;
 
-      if (event.error === "aborted" || event.error === "no-speech" || event.error === "network") {
-        console.log("[WebSpeech] Speech aborted or no input detected. Sending Try Again to Unity...");
+      const err = event && event.error ? event.error : "";
+
+      if (err === "aborted" || err === "no-speech" || err === "network") {
         SendMessage('SpeechReceiver', 'OnSpeechTryAgain');
       }
 
@@ -106,12 +111,12 @@ mergeInto(LibraryManager.library, {
         setTimeout(() => {
           console.log("[WebSpeech] Auto-restarting after error...");
           SendMessage('SpeechReceiver', 'RetryRecognition');
-        }, 1500);
+        }, 1000);
       }
     };
 
     recognition.onend = function () {
-      console.log("[WebSpeech] Ended.");
+      console.log("[WebSpeech] Recognition ended.");
       window.recognitionActive = false;
       window.recognitionStarting = false;
 
@@ -119,7 +124,7 @@ mergeInto(LibraryManager.library, {
         setTimeout(() => {
           console.log("[WebSpeech] Auto-restarting after end...");
           SendMessage('SpeechReceiver', 'RetryRecognition');
-        }, 1500);
+        }, 1000);
       }
     };
 
@@ -136,16 +141,24 @@ mergeInto(LibraryManager.library, {
 
   StopRecognition: function () {
     if (window.recognition) {
+      window.recognitionManuallyStopped = true;
+      window.allowAutoRestart = false;
+
       try {
-        window.recognitionManuallyStopped = true;
-        window.allowAutoRestart = false;
         window.recognition.stop();
-        console.log("[WebSpeech] Stopping...");
+        console.log("[WebSpeech] StopRecognition called.");
       } catch (e) {
         console.warn("[WebSpeech] Stop error:", e);
       }
+
       window.recognitionActive = false;
       window.recognitionStarting = false;
+    } else {
+      window.recognitionManuallyStopped = true;
+      window.allowAutoRestart = false;
+      window.recognitionActive = false;
+      window.recognitionStarting = false;
+      console.log("[WebSpeech] StopRecognition called but no recognition object present.");
     }
   }
 });

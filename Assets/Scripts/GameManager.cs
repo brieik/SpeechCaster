@@ -4,6 +4,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.Linq;
+
 
 public class GameManager : MonoBehaviour
 {
@@ -150,31 +152,106 @@ public class GameManager : MonoBehaviour
         CheckEndOfRound();
     }
 
+    // =======================
+    // CheckSpokenWord with phoneme-level strict matching
+    // =======================
     public void CheckSpokenWord(string spoken, float confidence = 1f)
-{
-    if (isGameOver) return;
-    spoken = CleanWord(spoken);
-
-    foreach (var wordObj in UnityEngine.Object.FindObjectsByType<WordObject>(FindObjectsSortMode.None))
     {
-        string target = CleanWord(wordObj.wordText.text);
-        if (spoken == target)
+        if (isGameOver) return;
+
+        spoken = CleanWord(spoken);
+
+        // Reject low confidence results
+        if (confidence < 0.85f)
         {
-            // Pass actual confidence
-            wordObj.Explode(confidence); // <- make Explode() accept confidence
+            streak = 0;
+            wordsResolved++;
+            wordConfidences.Add(0f);
+            StartCoroutine(FlashBorder(redBorder));
+            ShowFeedback("Too unclear! Try again.", Color.red);
             return;
         }
+
+        foreach (var wordObj in UnityEngine.Object.FindObjectsByType<WordObject>(FindObjectsSortMode.None))
+        {
+            string target = CleanWord(wordObj.wordText.text);
+            string spokenPhonemes = GetPhonemes(spoken);
+            string targetPhonemes = GetPhonemes(target);
+
+            if (PhonemeMatch(spokenPhonemes, targetPhonemes))
+            {
+                wordObj.Explode(confidence);
+                return;
+            }
+        }
+
+        // Mispronounced or completely wrong word
+        streak = 0;
+        wordsResolved++;
+        wordConfidences.Add(0f);
+        StartCoroutine(FlashBorder(redBorder));
+        ShowFeedback("Missed! Keep trying!", Color.red);
     }
 
-    // Mispronounced word
-    streak = 0;
-    wordsResolved++;            
-    wordConfidences.Add(0f);    
-    StartCoroutine(FlashBorder(redBorder));
-    ShowFeedback("Missed! Keep trying!", Color.red);
+    // =======================
+// Phoneme Matching Helpers (Practical Version)
+// =======================
+private string GetPhonemes(string word)
+{
+    word = word.ToLower();
+    if (WordLists.easyWords.Contains(word))
+        return PhonemeDictionary.easyPhonemes[word];
+    if (WordLists.mediumWords.Contains(word))
+        return PhonemeDictionary.mediumPhonemes[word];
+    if (WordLists.hardWords.Contains(word))
+        return PhonemeDictionary.hardPhonemes[word];
+    return word; // fallback to letters
+}
+
+private bool PhonemeMatch(string spoken, string target)
+{
+    // Remove spaces for distance calculation
+    string s = spoken.Replace(" ", "").ToUpper();
+    string t = target.Replace(" ", "").ToUpper();
+
+    int distance = LevenshteinDistance(s, t);
+
+    // Threshold: 1 for very short words, 2-3 for longer
+    int threshold = 1; 
+    if (t.Length >= 6) threshold = 2;
+    if (t.Length >= 10) threshold = 3;
+
+    return distance <= threshold;
 }
 
 
+    // =======================
+    // Fuzzy matching using Levenshtein Distance
+    // =======================
+    private int LevenshteinDistance(string a, string b)
+    {
+        int[,] dp = new int[a.Length + 1, b.Length + 1];
+        for (int i = 0; i <= a.Length; i++) dp[i, 0] = i;
+        for (int j = 0; j <= b.Length; j++) dp[0, j] = j;
+
+        for (int i = 1; i <= a.Length; i++)
+        {
+            for (int j = 1; j <= b.Length; j++)
+            {
+                int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+                dp[i, j] = Mathf.Min(
+                    dp[i - 1, j] + 1,
+                    dp[i, j - 1] + 1,
+                    dp[i - 1, j - 1] + cost
+                );
+            }
+        }
+        return dp[a.Length, b.Length];
+    }
+
+    // =======================
+    // Utility Methods
+    // =======================
     private string CleanWord(string w) => w.ToLower().Trim().TrimEnd('.', ',', '?', '!', ';', ':');
 
     private void AddScore(int amount)
@@ -208,7 +285,7 @@ public class GameManager : MonoBehaviour
 
         string feedbackMessage = GetFeedbackMessage(accuracy, avgClarity);
 
-        bool isWin = lives > 0; // Win if at least 1 life remains
+        bool isWin = lives > 0;
 
         if (isWin)
         {
