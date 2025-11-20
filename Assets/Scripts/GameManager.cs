@@ -6,7 +6,6 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Linq;
 
-
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
@@ -29,6 +28,11 @@ public class GameManager : MonoBehaviour
     public Image redBorder;
     public float flashDuration = 0.3f;
     public float maxAlpha = 0.35f;
+
+    [Header("End Round Scroll UI")]
+    [Header("End Round Scroll UI")]
+public EndRoundUI winEndRoundUIScript;   // assign Win panel scroll view
+public EndRoundUI loseEndRoundUIScript;  // assign Game Over panel scroll view
 
     [Header("Gameplay Settings")]
     public int lives = 3;
@@ -53,6 +57,8 @@ public class GameManager : MonoBehaviour
     private Coroutine feedbackRoutine;
     private List<float> wordConfidences = new List<float>();
 
+    private SessionLogger sessionLogger;
+
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -62,6 +68,8 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         ResetGame();
+        sessionLogger = new SessionLogger();
+        sessionLogger.StartRound();
     }
 
     void Update()
@@ -91,13 +99,16 @@ public class GameManager : MonoBehaviour
         wordsSpawned++;
     }
 
-    public void OnWordExploded(float confidence)
+    public void OnWordExploded(string targetWord, string spokenWord, float confidence)
     {
         wordsResolved++;
         correctWords++;
         streak++;
         bestStreak = Mathf.Max(bestStreak, streak);
         wordConfidences.Add(confidence);
+
+        // Log word
+        sessionLogger.LogWord(targetWord, spokenWord, confidence, "Correct", streak);
 
         // Achievements
         if (correctWords == 1) AchievementManager.Instance.Unlock("FirstWord");
@@ -129,7 +140,7 @@ public class GameManager : MonoBehaviour
         CheckEndOfRound();
     }
 
-    public void WordFallen()
+    public void WordFallen(string targetWord)
     {
         if (isGameOver) return;
 
@@ -137,6 +148,9 @@ public class GameManager : MonoBehaviour
         wordsResolved++;
         streak = 0;
         wordConfidences.Add(0f); // Missed word penalizes clarity
+
+        // Log missed word
+        sessionLogger.LogWord(targetWord, "", 0f, "Missed", streak);
 
         StartCoroutine(FlashBorder(redBorder));
         ShowFeedback("Word missed!", Color.red);
@@ -156,78 +170,82 @@ public class GameManager : MonoBehaviour
     // CheckSpokenWord with phoneme-level strict matching
     // =======================
     public void CheckSpokenWord(string spoken, float confidence = 1f)
+{
+    if (isGameOver) return;
+
+    spoken = CleanWord(spoken);
+
+    // Reject low confidence results
+    if (confidence < 0.85f)
     {
-        if (isGameOver) return;
-
-        spoken = CleanWord(spoken);
-
-        // Reject low confidence results
-        if (confidence < 0.85f)
-        {
-            streak = 0;
-            wordsResolved++;
-            wordConfidences.Add(0f);
-            StartCoroutine(FlashBorder(redBorder));
-            ShowFeedback("Too unclear! Try again.", Color.red);
-            return;
-        }
-
-        foreach (var wordObj in UnityEngine.Object.FindObjectsByType<WordObject>(FindObjectsSortMode.None))
-        {
-            string target = CleanWord(wordObj.wordText.text);
-            string spokenPhonemes = GetPhonemes(spoken);
-            string targetPhonemes = GetPhonemes(target);
-
-            if (PhonemeMatch(spokenPhonemes, targetPhonemes))
-            {
-                wordObj.Explode(confidence);
-                return;
-            }
-        }
-
-        // Mispronounced or completely wrong word
         streak = 0;
         wordsResolved++;
         wordConfidences.Add(0f);
         StartCoroutine(FlashBorder(redBorder));
-        ShowFeedback("Missed! Keep trying!", Color.red);
+        ShowFeedback("Too unclear! Try again.", Color.red);
+        return;
     }
 
-    // =======================
-// Phoneme Matching Helpers (Practical Version)
-// =======================
-private string GetPhonemes(string word)
-{
-    word = word.ToLower();
-    if (WordLists.easyWords.Contains(word))
-        return PhonemeDictionary.easyPhonemes[word];
-    if (WordLists.mediumWords.Contains(word))
-        return PhonemeDictionary.mediumPhonemes[word];
-    if (WordLists.hardWords.Contains(word))
-        return PhonemeDictionary.hardPhonemes[word];
-    return word; // fallback to letters
+    foreach (var wordObj in UnityEngine.Object.FindObjectsByType<WordObject>(FindObjectsSortMode.None))
+    {
+        string target = CleanWord(wordObj.wordText.text);
+        string spokenPhonemes = GetPhonemes(spoken);
+        string targetPhonemes = GetPhonemes(target);
+
+        if (PhonemeMatch(spokenPhonemes, targetPhonemes))
+        {
+            // Only explode the word; GameManager is notified inside WordObject.Explode
+            wordObj.Explode(confidence);
+            return; // stop checking other words
+        }
+    }
+
+    // Mispronounced or completely wrong word
+    streak = 0;
+    wordsResolved++;
+    wordConfidences.Add(0f);
+
+    // Log mispronounced for all remaining words
+    foreach (var wordObj in UnityEngine.Object.FindObjectsByType<WordObject>(FindObjectsSortMode.None))
+    {
+        string target = CleanWord(wordObj.wordText.text);
+        sessionLogger.LogWord(target, spoken, confidence, "Mispronounced", streak);
+    }
+
+    StartCoroutine(FlashBorder(redBorder));
+    ShowFeedback("Missed! Keep trying!", Color.red);
 }
 
-private bool PhonemeMatch(string spoken, string target)
-{
-    // Remove spaces for distance calculation
-    string s = spoken.Replace(" ", "").ToUpper();
-    string t = target.Replace(" ", "").ToUpper();
-
-    int distance = LevenshteinDistance(s, t);
-
-    // Threshold: 1 for very short words, 2-3 for longer
-    int threshold = 1; 
-    if (t.Length >= 6) threshold = 2;
-    if (t.Length >= 10) threshold = 3;
-
-    return distance <= threshold;
-}
-
 
     // =======================
-    // Fuzzy matching using Levenshtein Distance
+    // Phoneme Matching Helpers
     // =======================
+    private string GetPhonemes(string word)
+    {
+        word = word.ToLower();
+        if (WordLists.easyWords.Contains(word))
+            return PhonemeDictionary.easyPhonemes[word];
+        if (WordLists.mediumWords.Contains(word))
+            return PhonemeDictionary.mediumPhonemes[word];
+        if (WordLists.hardWords.Contains(word))
+            return PhonemeDictionary.hardPhonemes[word];
+        return word; // fallback
+    }
+
+    private bool PhonemeMatch(string spoken, string target)
+    {
+        string s = spoken.Replace(" ", "").ToUpper();
+        string t = target.Replace(" ", "").ToUpper();
+
+        int distance = LevenshteinDistance(s, t);
+
+        int threshold = 1;
+        if (t.Length >= 6) threshold = 2;
+        if (t.Length >= 10) threshold = 3;
+
+        return distance <= threshold;
+    }
+
     private int LevenshteinDistance(string a, string b)
     {
         int[,] dp = new int[a.Length + 1, b.Length + 1];
@@ -286,6 +304,22 @@ private bool PhonemeMatch(string spoken, string target)
         string feedbackMessage = GetFeedbackMessage(accuracy, avgClarity);
 
         bool isWin = lives > 0;
+
+        // Display End Round Scroll Log
+        if (isWin)
+{
+    winPanel?.SetActive(true);
+    winEndRoundUIScript?.DisplayWordLogs(sessionLogger.GetLogs()); // show logs in Win scroll
+}
+else
+{
+    gameOverPanel?.SetActive(true);
+    loseEndRoundUIScript?.DisplayWordLogs(sessionLogger.GetLogs()); // show logs in Lose scroll
+}
+
+
+        // Save CSV
+        sessionLogger.SaveCSV();
 
         if (isWin)
         {
@@ -436,6 +470,7 @@ private bool PhonemeMatch(string spoken, string target)
     {
         Time.timeScale = 1f;
         wordConfidences.Clear();
+        sessionLogger.StartRound();
         ResetGame();
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
